@@ -54,7 +54,8 @@ void configureTopology() {
     // Command sequencer needs to allocate memory to hold contents of command sequences
     cmdSeq.allocateBuffer(0, mallocator, 5 * 1024);
 
-        // UART arm driver configuration
+    #if defined TGT_OS_TYPE_LINUX
+    // UART arm driver configuration
     if (uartArm.open("/dev/ttyAMA0", Drv::LinuxUartDriver::UartBaudRate::BAUD_1000K,
                      Drv::LinuxUartDriver::UartFlowControl::NO_FLOW, Drv::LinuxUartDriver::UartParity::PARITY_NONE,
                      ARM_DRIVER_BUFFER_SIZE)) {
@@ -62,6 +63,7 @@ void configureTopology() {
     } else {
         Fw::Logger::log("Failed to open UART /dev/ttyAMA0\n");
     }
+    #endif
 }
 
 void setupTopology(const TopologyState& state) {
