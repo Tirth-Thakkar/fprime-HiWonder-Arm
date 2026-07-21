@@ -10,6 +10,7 @@
 
 // Necessary project-specified types
 #include <Fw/Types/MallocAllocator.hpp>
+#include <Fw/Logger/Logger.hpp>
 
 // Public functions for use in main program are namespaced with deployment module HiWonderArm
 // This is also the namespace where the topology components are instantiated by FPP.
