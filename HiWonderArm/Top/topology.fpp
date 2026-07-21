@@ -131,6 +131,17 @@ module HiWonderArm {
 
     }
 
+    connections RobotArm {
+      # uartArm allocates buffer to store incoming data from UART device
+      uartArm.allocate -> ComCcsds.commsBufferManager.bufferGetCallee
+      # uartArm sends received data to robotArm
+      uartArm.$recv -> robotArm.$recv
+      # robotArm deallocates received buffer from uartArm
+      robotArm.deallocate -> ComCcsds.commsBufferManager.bufferSendIn
+      # robotArm sends local buffer to uartArm. No deallocation needed
+      robotArm.$send -> uartArm.$send
+    }
+
   }
 
 }

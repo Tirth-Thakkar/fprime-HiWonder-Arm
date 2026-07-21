@@ -29,6 +29,9 @@ U32 rateGroup3Context[Svc::ActiveRateGroup::CONNECTION_COUNT_MAX] = {};
 
 enum TopologyConstants {
     COMM_PRIORITY = 34,
+    // Robot Arm constants
+    UART_ARM_PRIORITY = 38,
+    ARM_DRIVER_BUFFER_SIZE = 3000,
 };
 
 /**
@@ -49,6 +52,15 @@ void configureTopology() {
 
     // Command sequencer needs to allocate memory to hold contents of command sequences
     cmdSeq.allocateBuffer(0, mallocator, 5 * 1024);
+
+        // UART arm driver configuration
+    if (uartArm.open("/dev/ttyAMA0", Drv::LinuxUartDriver::UartBaudRate::BAUD_1000K,
+                     Drv::LinuxUartDriver::UartFlowControl::NO_FLOW, Drv::LinuxUartDriver::UartParity::PARITY_NONE,
+                     ARM_DRIVER_BUFFER_SIZE)) {
+        uartArm.start(UART_ARM_PRIORITY, Default::STACK_SIZE);
+    } else {
+        Fw::Logger::log("Failed to open UART /dev/ttyAMA0\n");
+    }
 }
 
 void setupTopology(const TopologyState& state) {
@@ -99,6 +111,9 @@ void teardownTopology(const TopologyState& state) {
     // Other task clean-up.
     comDriver.stop();
     (void)comDriver.join();
+
+    uartArm.quitReadThread();
+    (void)uartArm.join();
 
     // Resource deallocation
     cmdSeq.deallocateBuffer(mallocator);
