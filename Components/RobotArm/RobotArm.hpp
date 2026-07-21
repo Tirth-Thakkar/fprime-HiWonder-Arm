@@ -7,7 +7,7 @@
 #ifndef Components_RobotArm_HPP
 #define Components_RobotArm_HPP
 
-#include "ArmPiMiniRobotArm/Components/RobotArm/RobotArmComponentAc.hpp"
+#include "Components/RobotArm/RobotArmComponentAc.hpp"
 
 namespace Components {
 

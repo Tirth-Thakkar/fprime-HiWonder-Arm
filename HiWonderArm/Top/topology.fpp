@@ -31,6 +31,8 @@ module HiWonderArm {
     instance systemResources
     instance timer
     instance comDriver
+    instance robotArm
+    instance uartArm
     instance cmdSeq
 
   # ----------------------------------------------------------------------
