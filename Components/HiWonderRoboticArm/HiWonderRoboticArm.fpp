@@ -73,17 +73,28 @@ module Components {
 
         async command setJointAngle opcode 1
 
-        # @ Example async command
-        # async command COMMAND_NAME(param_name: U32)
+        telemetry ClawPosition: ClawStateTlm
 
-        # @ Example telemetry counter
-        # telemetry ExampleCounter: U64
+        telemetry JointAngle: JointAngleTlm
 
-        # @ Example event
-        # event ExampleStateEvent(example_state: Fw.On) severity activity high id 0 format "State set to {}"
+        event ClawStateEvent(clawState: ClawStateTlm) severity activity high id 0 format "State set to {}"
 
-        # @ Example port: receiving calls from the rate group
+        event JointAngleEvent(jointAngle: JointAngleTlm) severity activity high id 1 format "Joint angles set to {}"
+
         sync input port run: Svc.Sched
+
+        sync input port setClawState: ClawStatePort
+
+        sync input port setJointAngle: JointAnglePort
+
+        @ Receive telemetry
+        async input port $recv: Drv.ByteStreamData
+
+        @ Deallocate received buffer
+        output port deallocate: Fw.BufferSend
+
+        @ Send out arm data
+        output port $send: Drv.ByteStreamSend
 
         ###############################################################################
         # Standard AC Ports: Required for Channels, Events, Commands, and Parameters  #
