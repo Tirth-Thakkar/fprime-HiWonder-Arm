@@ -67,21 +67,6 @@ module Components {
     
     port ClawStatePort(value: ClawStateCmd)
 
-    state machine HiWonderRoboticArmStateMachine {
-        
-        @ Start in IDLE state
-        initial enter IDLE
-
-        @ Rate Group Driven Signal
-        signal tick
-
-        state IDLE {}
-
-        state DISPATCHED {}
-
-        state EXECUTING {}
-    }
-
     active component HiWonderRoboticArm {
 
         async command setClaw opcode 0
