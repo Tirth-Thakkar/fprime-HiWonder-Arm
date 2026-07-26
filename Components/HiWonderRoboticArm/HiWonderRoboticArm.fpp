@@ -26,7 +26,8 @@ module Components {
 
     enum JointStatus {
         IDLE
-        MOVING
+        PENDING_MOTION
+        PENDING_RESPONSE
     }
     
     struct JointAngle {

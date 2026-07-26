@@ -7,6 +7,7 @@
 #include "Components/HiWonderRoboticArm/HiWonderRoboticArm.hpp"
 #include "Drv/ByteStreamDriverModel/ByteStreamStatusEnumAc.hpp"
 #include "Components/HiWonderRoboticArm/JointEnumAc.hpp"
+#include "Components/HiWonderRoboticArm/JointStatusEnumAc.hpp"
 
 #include <cmath>
 
@@ -198,6 +199,12 @@ Drv::ByteStreamStatus HiWonderRoboticArm::armReadPosition() {
     return Drv::ByteStreamStatus::OP_OK;
 }
 
+void HiWonderRoboticArm::setJointAngle(Components::JointAngleCmd& value) {
+    return;
+}
 
+void HiWonderRoboticArm::setClawState(Components::ClawStateCmd& value) {
+    return;
+}
 
 }  // namespace Components

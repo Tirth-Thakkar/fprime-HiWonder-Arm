@@ -84,6 +84,10 @@ class HiWonderRoboticArm final : public HiWonderRoboticArmComponentBase {
 
     //! Request the controller-reported positions for the four arm joints.
     Drv::ByteStreamStatus armReadPosition();
+
+    void setJointAngle(Components::JointAngleCmd& value);
+
+    void setClawState(Components::ClawStateCmd& value);
 };
 
 }  // namespace Components
