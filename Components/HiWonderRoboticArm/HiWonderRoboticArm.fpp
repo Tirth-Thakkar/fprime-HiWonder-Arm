@@ -69,9 +69,13 @@ module Components {
 
     active component HiWonderRoboticArm {
 
-        async command setClaw opcode 0
+        async command setClaw (
+            value: ClawStateCmd
+        ) opcode 0
 
-        async command setJointAngle opcode 1
+        async command setJointAngle (
+            value: JointAngleCmd
+        ) opcode 1
 
         telemetry ClawPosition: ClawStateTlm
 
