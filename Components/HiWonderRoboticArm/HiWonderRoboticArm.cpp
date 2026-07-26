@@ -5,9 +5,10 @@
 // ======================================================================
 
 #include "Components/HiWonderRoboticArm/HiWonderRoboticArm.hpp"
+#include "Drv/ByteStreamDriverModel/ByteStreamStatusEnumAc.hpp"
+#include "Components/HiWonderRoboticArm/JointEnumAc.hpp"
 
 #include <cmath>
-#include "Drv/ByteStreamDriverModel/ByteStreamStatusEnumAc.hpp"
 
 namespace Components {
 
