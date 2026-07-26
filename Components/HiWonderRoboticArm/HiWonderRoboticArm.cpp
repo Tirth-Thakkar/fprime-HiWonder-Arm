@@ -103,7 +103,8 @@ bool HiWonderRoboticArm::jointCommandToPulses(const Components::JointAngleCmd& c
     return jointAngleToPulse(angles.get_baseRad(), pulses.baseUs) &&
            jointAngleToPulse(angles.get_shoulderRad(), pulses.shoulderUs) &&
            jointAngleToPulse(angles.get_elbowRad(), pulses.elbowUs) &&
-           jointAngleToPulse(angles.get_wristRad(), pulses.wristUs);
+           jointAngleToPulse(angles.get_wristRad(), pulses.wristUs) &&
+           jointAngleToPulse(angles.get_claw(), pulses.clawUs);
 }
 
 U8 HiWonderRoboticArm::checksumCrc8(const U8* const data, const U32 dataSize) {
@@ -116,7 +117,7 @@ U8 HiWonderRoboticArm::checksumCrc8(const U8* const data, const U32 dataSize) {
 }
 
 Drv::ByteStreamStatus HiWonderRoboticArm::armSetPosition(const Components::JointAngleCmd& commands) {
-    static constexpr U8 TARGET_COUNT = 4;
+    static constexpr U8 TARGET_COUNT = 5;
     static constexpr U8 DATA_LENGTH = 4 + (3 * TARGET_COUNT);
     static constexpr U32 PACKET_SIZE = 2 + 2 + DATA_LENGTH + 1;
     static constexpr U32 MAXIMUM_DURATION_MS = 0xFFFF;
@@ -131,12 +132,14 @@ Drv::ByteStreamStatus HiWonderRoboticArm::armSetPosition(const Components::Joint
         static_cast<U8>(Joint::SHOULDER),
         static_cast<U8>(Joint::ELBOW),
         static_cast<U8>(Joint::WRIST),
+        static_cast<U8>(Joint::CLAW),
     };
     const U16 pulseTargets[TARGET_COUNT] = {
         pulses.baseUs,
         pulses.shoulderUs,
         pulses.elbowUs,
         pulses.wristUs,
+        pulses.clawUs,
     };
 
     const U16 durationMs = static_cast<U16>(commands.get_durationMs());
@@ -164,13 +167,14 @@ Drv::ByteStreamStatus HiWonderRoboticArm::armSetPosition(const Components::Joint
 }
 
 Drv::ByteStreamStatus HiWonderRoboticArm::armReadPosition() {
-    static constexpr U8 TARGET_COUNT = 4;
+    static constexpr U8 TARGET_COUNT = 5;
     static constexpr U8 PACKET_SIZE = 7;
     const U8 servoIds[TARGET_COUNT] = {
         static_cast<U8>(Joint::BASE),
         static_cast<U8>(Joint::SHOULDER),
         static_cast<U8>(Joint::ELBOW),
         static_cast<U8>(Joint::WRIST),
+        static_cast<U8>(Joint::CLAW),
     };
 
     // The controller read-position command accepts one servo ID per packet.

@@ -69,6 +69,7 @@ class HiWonderRoboticArm final : public HiWonderRoboticArmComponentBase {
         U16 shoulderUs;
         U16 elbowUs;
         U16 wristUs;
+        U16 clawUs;
     };
 
     //! Convert one KDL joint angle to the common ArmPi Mini PWM pulse range.

@@ -34,6 +34,7 @@ module Components {
         shoulderRad: F64,
         elbowRad: F64,
         wristRad: F64,
+        claw: ClawPosition
     }
 
     struct JointAngleCmd {
