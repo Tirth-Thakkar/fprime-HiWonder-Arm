@@ -8,10 +8,6 @@
 #define Components_HiWonderRoboticArm_HPP
 
 #include "Components/HiWonderRoboticArm/HiWonderRoboticArmComponentAc.hpp"
-#include "Components/HiWonderRoboticArm/JointEnumAc.hpp"
-#include "Components/HiWonderRoboticArm/JointStatusEnumAc.hpp"
-#include "Components/HiWonderRoboticArm/ClawPositionEnumAc.hpp"
-#include "Components/HiWonderRoboticArm/ResponseEnumAc.hpp"
 
 namespace Components {
 
@@ -85,7 +81,8 @@ class HiWonderRoboticArm final : public HiWonderRoboticArmComponentBase {
 
     Drv::ByteStreamStatus armSetPosition(const Components::JointAngleCmd& commands);
 
-    Drv::ByteStreamStatus armReadPosition(Components::Joint::t joints[]);
+    //! Request the controller-reported positions for the four arm joints.
+    Drv::ByteStreamStatus armReadPosition();
 };
 
 }  // namespace Components

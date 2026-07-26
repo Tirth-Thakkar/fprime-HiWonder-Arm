@@ -7,6 +7,7 @@
 #include "Components/HiWonderRoboticArm/HiWonderRoboticArm.hpp"
 
 #include <cmath>
+#include "Drv/ByteStreamDriverModel/ByteStreamStatusEnumAc.hpp"
 
 namespace Components {
 
@@ -16,6 +17,11 @@ namespace {
     static constexpr U16 MINIMUM_PULSE_US = 500;
     static constexpr U16 MAXIMUM_PULSE_US = 2500;
     static constexpr F64 ZERO_PULSE_US = 1500.0;
+
+    static constexpr U8 PWM_SERVO_CMD = 0x04;
+    static constexpr U8 PWM_SET_POSITION_CMD = 0x01;
+    static constexpr U8 PWM_READ_POSITION_CMD = 0x05;
+    static constexpr U8 PWM_READ_POSITION_DATA_LEN = 2;
 
     static constexpr U8 CRC8_TABLE[256] = {
         0,   94,  188, 226, 97,  63,  221, 131, 194, 156, 126, 32,  163, 253, 31,  65,  157, 195, 33,  127, 252, 162,
@@ -58,13 +64,9 @@ void HiWonderRoboticArm ::setClawState_handler(FwIndexType portNum, const Compon
 }
 
 void HiWonderRoboticArm ::setJointAngle_handler(FwIndexType portNum, const Components::JointAngleCmd& value) {
-    JointPulses pulses{};
-    if (!this->jointCommandToPulses(value, pulses)) {
-        // TODO: Report invalid joint input through the driver response path.
-        return;
+    if (this->armSetPosition(value) != Drv::ByteStreamStatus::OP_OK) {
+        // TODO: Report the invalid input or UART error through the driver response path.
     }
-
-    // TODO: Pass `pulses` and value.get_durationMs() to the controller packet writer.
 }
 
 // ----------------------------------------------------------------------
@@ -111,5 +113,86 @@ U8 HiWonderRoboticArm::checksumCrc8(const U8* const data, const U32 dataSize) {
     }
     return crc;
 }
+
+Drv::ByteStreamStatus HiWonderRoboticArm::armSetPosition(const Components::JointAngleCmd& commands) {
+    static constexpr U8 TARGET_COUNT = 4;
+    static constexpr U8 DATA_LENGTH = 4 + (3 * TARGET_COUNT);
+    static constexpr U32 PACKET_SIZE = 2 + 2 + DATA_LENGTH + 1;
+    static constexpr U32 MAXIMUM_DURATION_MS = 0xFFFF;
+
+    JointPulses pulses{};
+    if (!this->jointCommandToPulses(commands, pulses) || commands.get_durationMs() > MAXIMUM_DURATION_MS) {
+        return Drv::ByteStreamStatus::OTHER_ERROR;
+    }
+
+    const U8 servoIds[TARGET_COUNT] = {
+        static_cast<U8>(Joint::BASE),
+        static_cast<U8>(Joint::SHOULDER),
+        static_cast<U8>(Joint::ELBOW),
+        static_cast<U8>(Joint::WRIST),
+    };
+    const U16 pulseTargets[TARGET_COUNT] = {
+        pulses.baseUs,
+        pulses.shoulderUs,
+        pulses.elbowUs,
+        pulses.wristUs,
+    };
+
+    const U16 durationMs = static_cast<U16>(commands.get_durationMs());
+    U8 buf[PACKET_SIZE];
+    buf[0] = 0xAA;                  // Header
+    buf[1] = 0x55;                  // Header
+    buf[2] = PWM_SERVO_CMD;         // Function
+    buf[3] = DATA_LENGTH;           // Data packet length
+    buf[4] = PWM_SET_POSITION_CMD;  // command
+    buf[5] = durationMs & 0xFF;
+    buf[6] = (durationMs >> 8) & 0xFF;
+    buf[7] = TARGET_COUNT;
+
+    U32 index = 8;
+    for (U32 i = 0; i < TARGET_COUNT; i++) {
+        buf[index++] = servoIds[i];
+        buf[index++] = pulseTargets[i] & 0xFF;
+        buf[index++] = (pulseTargets[i] >> 8) & 0xFF;
+    }
+
+    // When calculating the checksum, omit the 2 header bytes
+    buf[index] = this->checksumCrc8(buf + 2, DATA_LENGTH + 2);
+    Fw::Buffer buffer(buf, PACKET_SIZE);
+    return this->send_out(0, buffer);
+}
+
+Drv::ByteStreamStatus HiWonderRoboticArm::armReadPosition() {
+    static constexpr U8 TARGET_COUNT = 4;
+    static constexpr U8 PACKET_SIZE = 7;
+    const U8 servoIds[TARGET_COUNT] = {
+        static_cast<U8>(Joint::BASE),
+        static_cast<U8>(Joint::SHOULDER),
+        static_cast<U8>(Joint::ELBOW),
+        static_cast<U8>(Joint::WRIST),
+    };
+
+    // The controller read-position command accepts one servo ID per packet.
+    for (U32 i = 0; i < TARGET_COUNT; i++) {
+        U8 buf[PACKET_SIZE];
+        buf[0] = 0xAA;
+        buf[1] = 0x55;
+        buf[2] = PWM_SERVO_CMD;
+        buf[3] = PWM_READ_POSITION_DATA_LEN;
+        buf[4] = PWM_READ_POSITION_CMD;
+        buf[5] = servoIds[i];
+        buf[6] = this->checksumCrc8(buf + 2, PWM_READ_POSITION_DATA_LEN + 2);
+
+        Fw::Buffer buffer(buf, PACKET_SIZE);
+        const Drv::ByteStreamStatus status = this->send_out(0, buffer);
+        if (status != Drv::ByteStreamStatus::OP_OK) {
+            return status;
+        }
+    }
+
+    return Drv::ByteStreamStatus::OP_OK;
+}
+
+
 
 }  // namespace Components
