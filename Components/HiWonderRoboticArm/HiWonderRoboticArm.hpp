@@ -8,6 +8,10 @@
 #define Components_HiWonderRoboticArm_HPP
 
 #include "Components/HiWonderRoboticArm/HiWonderRoboticArmComponentAc.hpp"
+#include "Components/HiWonderRoboticArm/JointEnumAc.hpp"
+#include "Components/HiWonderRoboticArm/JointStatusEnumAc.hpp"
+#include "Components/HiWonderRoboticArm/ClawPositionEnumAc.hpp"
+#include "Components/HiWonderRoboticArm/ResponseEnumAc.hpp"
 
 namespace Components {
 
@@ -76,6 +80,12 @@ class HiWonderRoboticArm final : public HiWonderRoboticArmComponentBase {
 
     //! Convert the four fixed arm joints to controller pulse targets.
     static bool jointCommandToPulses(const Components::JointAngleCmd& command, JointPulses& pulses);
+
+    static U8 checksumCrc8(const U8* const data, const U32 dataSize);
+
+    Drv::ByteStreamStatus armSetPosition(const Components::JointAngleCmd& commands);
+
+    Drv::ByteStreamStatus armReadPosition(Components::Joint::t joints[]);
 };
 
 }  // namespace Components
