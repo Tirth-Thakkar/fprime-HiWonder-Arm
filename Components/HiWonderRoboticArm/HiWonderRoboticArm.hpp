@@ -63,7 +63,12 @@ class HiWonderRoboticArm final : public HiWonderRoboticArmComponentBase {
     void setJointAngle_cmdHandler(FwOpcodeType opCode,  //!< The opcode
                                   U32 cmdSeq,           //!< The command sequence number
                                   Components::JointAngleCmd value) override;
+    
 
+    // ----------------------------------------------------------------------
+    // Helper Methods for HiWonderRoboticArm Component
+    // ----------------------------------------------------------------------
+    
     struct JointPulses {
         U16 baseUs;
         U16 shoulderUs;
@@ -80,14 +85,20 @@ class HiWonderRoboticArm final : public HiWonderRoboticArmComponentBase {
 
     static U8 checksumCrc8(const U8* const data, const U32 dataSize);
 
+    //! Helper method to write all joint angles to the controller.
     Drv::ByteStreamStatus armSetPosition(const Components::JointAngleCmd& commands);
 
     //! Request the controller-reported positions for the four arm joints.
     Drv::ByteStreamStatus armReadPosition();
 
-    void setJointAngle(Components::JointAngleCmd& value);
+    //! Helper method to bundle shared logic for sending joint angle commands
+    Drv::ByteStreamStatus setJointAngle(const Components::JointAngleCmd& value);
 
-    void setClawState(Components::ClawStateCmd& value);
+    //! Helper method to write only claw state instead of all joints.
+    Drv::ByteStreamStatus setClawState(const Components::ClawStateCmd& value);
+
+    //! Arm Joint State
+    Components::JointAngle m_currentJointAngles;
 };
 
 }  // namespace Components

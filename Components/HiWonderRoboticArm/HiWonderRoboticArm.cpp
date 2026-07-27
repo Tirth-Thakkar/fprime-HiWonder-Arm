@@ -62,13 +62,11 @@ void HiWonderRoboticArm ::run_handler(FwIndexType portNum, U32 context) {
 }
 
 void HiWonderRoboticArm ::setClawState_handler(FwIndexType portNum, const Components::ClawStateCmd& value) {
-    // TODO
+    (void)this->setClawState(value);
 }
 
 void HiWonderRoboticArm ::setJointAngle_handler(FwIndexType portNum, const Components::JointAngleCmd& value) {
-    if (this->armSetPosition(value) != Drv::ByteStreamStatus::OP_OK) {
-        // TODO: Report the invalid input or UART error through the driver response path.
-    }
+    (void)this->setJointAngle(value);
 }
 
 // ----------------------------------------------------------------------
@@ -76,14 +74,22 @@ void HiWonderRoboticArm ::setJointAngle_handler(FwIndexType portNum, const Compo
 // ----------------------------------------------------------------------
 
 void HiWonderRoboticArm ::setClaw_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, Components::ClawStateCmd value) {
-    // TODO
-    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+    const Drv::ByteStreamStatus status = this->setClawState(value);
+    const Fw::CmdResponse response =
+        (status == Drv::ByteStreamStatus::OP_OK) ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR;
+    this->cmdResponse_out(opCode, cmdSeq, response);
 }
 
 void HiWonderRoboticArm ::setJointAngle_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, Components::JointAngleCmd value) {
-    // TODO
-    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+    const Drv::ByteStreamStatus status = this->setJointAngle(value);
+    const Fw::CmdResponse response =
+        (status == Drv::ByteStreamStatus::OP_OK) ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR;
+    this->cmdResponse_out(opCode, cmdSeq, response);
 }
+
+// ----------------------------------------------------------------------
+// Helper Methods for HiWonderRoboticArm Component
+// ----------------------------------------------------------------------
 
 bool HiWonderRoboticArm::jointAngleToPulse(const F64 jointAngleRad, U16& pulseUs) {
     if (!std::isfinite(jointAngleRad)) {
@@ -199,12 +205,68 @@ Drv::ByteStreamStatus HiWonderRoboticArm::armReadPosition() {
     return Drv::ByteStreamStatus::OP_OK;
 }
 
-void HiWonderRoboticArm::setJointAngle(Components::JointAngleCmd& value) {
-    return;
+Drv::ByteStreamStatus HiWonderRoboticArm::setJointAngle(const Components::JointAngleCmd& value) {
+    const Drv::ByteStreamStatus writeStatus = this->armSetPosition(value);
+    if (writeStatus != Drv::ByteStreamStatus::OP_OK) {
+        return writeStatus;
+    }
+
+    this->m_currentJointAngles = value.get_jointAngle();
+
+    Components::JointAngleTlm jointTlm(this->m_currentJointAngles, Components::JointStatus::PENDING_MOTION);
+    Components::ClawStateTlm clawTlm(this->m_currentJointAngles.get_claw(),
+                                     Components::JointStatus::PENDING_MOTION);
+    
+    this->tlmWrite_JointAngle(jointTlm);
+    this->tlmWrite_ClawPosition(clawTlm);
+    this->log_ACTIVITY_HI_JointAngleEvent(jointTlm);
+
+    const Drv::ByteStreamStatus readStatus = this->armReadPosition();
+    if (readStatus != Drv::ByteStreamStatus::OP_OK) {
+        return readStatus;
+    }
+
+    jointTlm.set_status(Components::JointStatus::PENDING_RESPONSE);
+    clawTlm.set_status(Components::JointStatus::PENDING_RESPONSE);
+    
+    this->tlmWrite_JointAngle(jointTlm);
+    this->tlmWrite_ClawPosition(clawTlm);
+    
+    return Drv::ByteStreamStatus::OP_OK;
 }
 
-void HiWonderRoboticArm::setClawState(Components::ClawStateCmd& value) {
-    return;
+Drv::ByteStreamStatus HiWonderRoboticArm::setClawState(const Components::ClawStateCmd& value) {
+    // Use prior position to not overwrite current joint state for claw.
+    Components::JointAngle updatedJointAngles = this->m_currentJointAngles;
+    updatedJointAngles.set_claw(value.get_position());
+    const Components::JointAngleCmd armCommand(updatedJointAngles, value.get_durationMs());
+
+    const Drv::ByteStreamStatus writeStatus = this->armSetPosition(armCommand);
+    if (writeStatus != Drv::ByteStreamStatus::OP_OK) {
+        return writeStatus;
+    }
+
+    this->m_currentJointAngles = updatedJointAngles;
+
+    Components::JointAngleTlm jointTlm(this->m_currentJointAngles, Components::JointStatus::PENDING_MOTION);
+    Components::ClawStateTlm clawTlm(value.get_position(), Components::JointStatus::PENDING_MOTION);
+    
+    this->tlmWrite_JointAngle(jointTlm);
+    this->tlmWrite_ClawPosition(clawTlm);
+    this->log_ACTIVITY_HI_ClawStateEvent(clawTlm);
+
+    const Drv::ByteStreamStatus readStatus = this->armReadPosition();
+    if (readStatus != Drv::ByteStreamStatus::OP_OK) {
+        return readStatus;
+    }
+
+    jointTlm.set_status(Components::JointStatus::PENDING_RESPONSE);
+    clawTlm.set_status(Components::JointStatus::PENDING_RESPONSE);
+    
+    this->tlmWrite_JointAngle(jointTlm);
+    this->tlmWrite_ClawPosition(clawTlm);
+    
+    return Drv::ByteStreamStatus::OP_OK;
 }
 
 }  // namespace Components
