@@ -99,6 +99,12 @@ class HiWonderRoboticArm final : public HiWonderRoboticArmComponentBase {
 
     //! Arm Joint State
     Components::JointAngle m_currentJointAngles;
+
+    //! Current stage of the non-blocking motion/readback sequence.
+    Components::JointStatus::T m_jointStatus = Components::JointStatus::IDLE;
+
+    //! Earliest time at which the scheduler may request position readback.
+    Fw::Time m_motionDeadline;
 };
 
 }  // namespace Components

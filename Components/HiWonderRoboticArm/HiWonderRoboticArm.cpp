@@ -24,6 +24,7 @@ namespace {
     static constexpr U8 PWM_SET_POSITION_CMD = 0x01;
     static constexpr U8 PWM_READ_POSITION_CMD = 0x05;
     static constexpr U8 PWM_READ_POSITION_DATA_LEN = 2;
+    static constexpr U32 MOTION_SETTLE_MARGIN_MS = 50;
 
     static constexpr U8 CRC8_TABLE[256] = {
         0,   94,  188, 226, 97,  63,  221, 131, 194, 156, 126, 32,  163, 253, 31,  65,  157, 195, 33,  127, 252, 162,
@@ -58,7 +59,23 @@ void HiWonderRoboticArm ::recv_handler(FwIndexType portNum, Fw::Buffer& buffer, 
 }
 
 void HiWonderRoboticArm ::run_handler(FwIndexType portNum, U32 context) {
-    // TODO
+    if (this->m_jointStatus != Components::JointStatus::PENDING_MOTION) {
+        return;
+    }
+
+    if (this->getTime() < this->m_motionDeadline) {
+        return;
+    }
+
+    if (this->armReadPosition() != Drv::ByteStreamStatus::OP_OK) {
+        return;
+    }
+
+    this->m_jointStatus = Components::JointStatus::PENDING_RESPONSE;
+    const Components::JointAngleTlm jointTlm(this->m_currentJointAngles, this->m_jointStatus);
+    const Components::ClawStateTlm clawTlm(this->m_currentJointAngles.get_claw(), this->m_jointStatus);
+    this->tlmWrite_JointAngle(jointTlm);
+    this->tlmWrite_ClawPosition(clawTlm);
 }
 
 void HiWonderRoboticArm ::setClawState_handler(FwIndexType portNum, const Components::ClawStateCmd& value) {
@@ -212,26 +229,18 @@ Drv::ByteStreamStatus HiWonderRoboticArm::setJointAngle(const Components::JointA
     }
 
     this->m_currentJointAngles = value.get_jointAngle();
+    this->m_jointStatus = Components::JointStatus::PENDING_MOTION;
+    this->m_motionDeadline = this->getTime();
+    const U32 waitTimeMs = value.get_durationMs() + MOTION_SETTLE_MARGIN_MS;
+    this->m_motionDeadline.add(waitTimeMs / 1000, (waitTimeMs % 1000) * 1000);
 
-    Components::JointAngleTlm jointTlm(this->m_currentJointAngles, Components::JointStatus::PENDING_MOTION);
-    Components::ClawStateTlm clawTlm(this->m_currentJointAngles.get_claw(),
-                                     Components::JointStatus::PENDING_MOTION);
+    const Components::JointAngleTlm jointTlm(this->m_currentJointAngles, this->m_jointStatus);
+    const Components::ClawStateTlm clawTlm(this->m_currentJointAngles.get_claw(), this->m_jointStatus);
     
     this->tlmWrite_JointAngle(jointTlm);
     this->tlmWrite_ClawPosition(clawTlm);
     this->log_ACTIVITY_HI_JointAngleEvent(jointTlm);
 
-    const Drv::ByteStreamStatus readStatus = this->armReadPosition();
-    if (readStatus != Drv::ByteStreamStatus::OP_OK) {
-        return readStatus;
-    }
-
-    jointTlm.set_status(Components::JointStatus::PENDING_RESPONSE);
-    clawTlm.set_status(Components::JointStatus::PENDING_RESPONSE);
-    
-    this->tlmWrite_JointAngle(jointTlm);
-    this->tlmWrite_ClawPosition(clawTlm);
-    
     return Drv::ByteStreamStatus::OP_OK;
 }
 
@@ -247,25 +256,18 @@ Drv::ByteStreamStatus HiWonderRoboticArm::setClawState(const Components::ClawSta
     }
 
     this->m_currentJointAngles = updatedJointAngles;
+    this->m_jointStatus = Components::JointStatus::PENDING_MOTION;
+    this->m_motionDeadline = this->getTime();
+    const U32 waitTimeMs = value.get_durationMs() + MOTION_SETTLE_MARGIN_MS;
+    this->m_motionDeadline.add(waitTimeMs / 1000, (waitTimeMs % 1000) * 1000);
 
-    Components::JointAngleTlm jointTlm(this->m_currentJointAngles, Components::JointStatus::PENDING_MOTION);
-    Components::ClawStateTlm clawTlm(value.get_position(), Components::JointStatus::PENDING_MOTION);
+    const Components::JointAngleTlm jointTlm(this->m_currentJointAngles, this->m_jointStatus);
+    const Components::ClawStateTlm clawTlm(value.get_position(), this->m_jointStatus);
     
     this->tlmWrite_JointAngle(jointTlm);
     this->tlmWrite_ClawPosition(clawTlm);
     this->log_ACTIVITY_HI_ClawStateEvent(clawTlm);
 
-    const Drv::ByteStreamStatus readStatus = this->armReadPosition();
-    if (readStatus != Drv::ByteStreamStatus::OP_OK) {
-        return readStatus;
-    }
-
-    jointTlm.set_status(Components::JointStatus::PENDING_RESPONSE);
-    clawTlm.set_status(Components::JointStatus::PENDING_RESPONSE);
-    
-    this->tlmWrite_JointAngle(jointTlm);
-    this->tlmWrite_ClawPosition(clawTlm);
-    
     return Drv::ByteStreamStatus::OP_OK;
 }
 

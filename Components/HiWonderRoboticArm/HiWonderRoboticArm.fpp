@@ -1,20 +1,6 @@
 module Components {
     @ HiWonder Robotic Arm Driver for tabletop robotic arm.
 
-    # Driver Information
-    enum Response {
-        ACCEPTED
-        INVALID_VALUE
-        JOINT_LIMIT
-        INVALID_DURATION
-        UART_ERROR
-    }
-
-    struct DrvResponse {
-        response: Response
-        timeStamp: Fw.Time
-    }
-
     # Joint Information
     enum Joint {
         CLAW = 1
@@ -26,6 +12,10 @@ module Components {
 
     enum JointStatus {
         IDLE
+        ACCEPTED
+        INVALID_VALUE
+        JOINT_LIMIT
+        INVALID_DURATION
         PENDING_MOTION
         PENDING_RESPONSE
     }
@@ -87,7 +77,7 @@ module Components {
 
         event JointAngleEvent(jointAngle: JointAngleTlm) severity activity high id 1 format "Joint angles set to {}"
 
-        sync input port run: Svc.Sched
+        async input port run: Svc.Sched drop
 
         sync input port setClawState: ClawStatePort
 
